@@ -1,0 +1,8 @@
+zhuyin-eye-site.zip
+dist/
+fonts/_work/
+data/_work/
+test/shots/
+test/*.log
+test/*.json
+__pycache__/

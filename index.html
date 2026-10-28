@@ -1,0 +1,455 @@
+<title>眼睛注音板</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&display=swap">
+<style>
+/* Layout: one-screen board. A calm top band (typed text + the four syllable slots — a safe place to rest the eyes),
+   a grid of at most 8 big targets, and a fixed 3-key rail (right side in landscape, bottom in portrait). */
+:root {
+  --bg: #E7ECEE;
+  --surface: #FAFBFB;
+  --ink: #1B282E;
+  --muted: #56666D;
+  --line: #C9D3D7;
+  --focus: #1D6C75;
+  --focus-soft: rgba(29, 108, 117, .17);
+  --on-focus: #FFFFFF;
+  --ini-bg: #DAE5F1; --ini-ink: #214E7A;
+  --med-bg: #D7ECDF; --med-ink: #235E3D;
+  --fin-bg: #F3E4CC; --fin-ink: #774F12;
+  --tone-bg: #E4DEF0; --tone-ink: #52407C;
+  --fn-bg: #DCE3E6; --fn-ink: #2E4048;
+  --warn-bg: #F2DCD7; --warn-ink: #8A3426;
+  --font-board: "Huninn", "PingFang TC", "Noto Sans TC", "Heiti TC", sans-serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  --scale: 1;
+  --gap: clamp(10px, 1.7vmin, 18px);
+  --radius: 22px;
+  --rail: clamp(140px, 15vw, 188px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11171A; --surface: #1A2226; --ink: #E4ECEE; --muted: #97A8AF; --line: #2B373C;
+    --focus: #5DBEC6; --focus-soft: rgba(93, 190, 198, .22); --on-focus: #0E2226;
+    --ini-bg: #1D3350; --ini-ink: #A8CAEE; --med-bg: #1B3B2A; --med-ink: #A3DBBA;
+    --fin-bg: #403118; --fin-ink: #EFCB8F; --tone-bg: #31284A; --tone-ink: #CBBCEE;
+    --fn-bg: #232E33; --fn-ink: #C6D3D8; --warn-bg: #43221C; --warn-ink: #F1B3A6;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11171A; --surface: #1A2226; --ink: #E4ECEE; --muted: #97A8AF; --line: #2B373C;
+  --focus: #5DBEC6; --focus-soft: rgba(93, 190, 198, .22); --on-focus: #0E2226;
+  --ini-bg: #1D3350; --ini-ink: #A8CAEE; --med-bg: #1B3B2A; --med-ink: #A3DBBA;
+  --fin-bg: #403118; --fin-ink: #EFCB8F; --tone-bg: #31284A; --tone-ink: #CBBCEE;
+  --fn-bg: #232E33; --fn-ink: #C6D3D8; --warn-bg: #43221C; --warn-ink: #F1B3A6;
+  color-scheme: dark;
+}
+
+html { height: 100%; box-sizing: border-box; }
+body {
+  height: 100%; margin: 0; overflow: hidden;
+  background: var(--bg); color: var(--ink); font-family: var(--font-ui);
+  touch-action: manipulation; -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none;
+}
+button { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+/* ---------- app frame ---------- */
+.app {
+  height: 100%; box-sizing: border-box; display: grid; gap: var(--gap);
+  padding-block: var(--gap);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  grid-template-columns: minmax(0, 1fr) var(--rail);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "top top" "board rail";
+}
+@media (orientation: portrait) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "top" "board" "rail"; }
+}
+
+/* ---------- top band: output + syllable slots (rest zone) ---------- */
+.top { grid-area: top; position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--gap); }
+.out {
+  min-width: 0; box-sizing: border-box; height: calc(clamp(96px, 17vh, 150px) * var(--scale));
+  background: var(--surface); border: 2px solid var(--line); border-radius: var(--radius);
+  padding: 6px 18px; overflow: hidden;
+  display: flex; flex-wrap: wrap; align-content: flex-end; align-items: flex-end; gap: 0 2px;
+  font-family: var(--font-board); font-size: calc(clamp(30px, 5.4vmin, 50px) * var(--scale)); line-height: 1.45;
+}
+.out .u { white-space: pre; }
+.out .zh { margin-right: .35em; color: var(--ini-ink); }
+.out ruby { ruby-position: over; }
+.out rt { font-size: .3em; color: var(--muted); letter-spacing: .02em; }
+.out .ph { color: var(--muted); font-size: .5em; align-self: center; font-family: var(--font-ui); }
+.out .caret { width: 3px; height: 1.1em; margin-bottom: .2em; background: var(--focus); border-radius: 2px; opacity: .7; }
+
+.comp { display: grid; grid-template-columns: repeat(4, calc(clamp(58px, 8.2vmin, 86px) * var(--scale))) 44px; gap: 8px; }
+.slot {
+  display: grid; grid-template-rows: 1fr auto; place-items: center; box-sizing: border-box;
+  border: 2px dashed var(--line); border-radius: 16px; padding: 4px 0 6px; background: transparent;
+}
+.slot b { font-family: var(--font-board); font-weight: 400; font-size: calc(clamp(30px, 5.6vmin, 54px) * var(--scale)); line-height: 1; min-height: 1em; }
+.slot span { font-size: 13px; letter-spacing: .08em; color: var(--muted); }
+.slot.full { border-style: solid; }
+.slot.ini.full { background: var(--ini-bg); color: var(--ini-ink); border-color: transparent; }
+.slot.med.full { background: var(--med-bg); color: var(--med-ink); border-color: transparent; }
+.slot.fin.full { background: var(--fin-bg); color: var(--fin-ink); border-color: transparent; }
+.slot.tone.full { background: var(--tone-bg); color: var(--tone-ink); border-color: transparent; }
+.slot.now { border-color: var(--focus); border-style: solid; }
+.side { display: grid; grid-template-rows: auto 1fr; justify-items: center; gap: 10px; padding-top: 2px; }
+.gear {
+  position: relative; width: 44px; height: 44px; border-radius: 50%; border: 0; padding: 0;
+  background: transparent; color: var(--muted); display: grid; place-items: center; cursor: pointer;
+}
+.gear svg { width: 24px; height: 24px; }
+.gear::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(var(--focus) calc(var(--hold, 0) * 360deg), transparent 0);
+  -webkit-mask: radial-gradient(circle, transparent 17px, #000 18px); mask: radial-gradient(circle, transparent 17px, #000 18px);
+}
+.camdot { width: 12px; height: 12px; border-radius: 50%; background: var(--line); }
+.camdot.on { background: #3E9B63; }
+.camdot.off { background: #C0704F; }
+.banner {
+  position: absolute; left: 14px; top: 10px; max-width: calc(100% - 40px);
+  background: var(--fn-bg); color: var(--fn-ink); border-radius: 12px; padding: 6px 12px;
+  font-size: 16px; line-height: 1.35; z-index: 2; pointer-events: none;
+}
+@media (max-width: 600px) {
+  .top { grid-template-columns: minmax(0, 1fr); }
+  .comp { grid-template-columns: repeat(4, minmax(0, 1fr)) 44px; }
+}
+
+/* ---------- board ---------- */
+.board {
+  grid-area: board; min-height: 0; display: grid; gap: var(--gap);
+  grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--rows, 2), minmax(0, 1fr));
+}
+.tile, .rbtn {
+  position: relative; box-sizing: border-box; min-width: 0; min-height: 0; overflow: hidden;
+  border: 2px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .25em;
+  padding: 6px; cursor: pointer; transition: background-color .15s, border-color .15s, box-shadow .15s, opacity .2s;
+}
+.tile { container-type: size; font-family: var(--font-board); }
+.tile.ini  { background: var(--ini-bg);  color: var(--ini-ink);  border-color: transparent; }
+.tile.med  { background: var(--med-bg);  color: var(--med-ink);  border-color: transparent; }
+.tile.fin  { background: var(--fin-bg);  color: var(--fin-ink);  border-color: transparent; }
+.tile.tone { background: var(--tone-bg); color: var(--tone-ink); border-color: transparent; }
+.tile.fn, .rbtn { background: var(--fn-bg); color: var(--fn-ink); border-color: transparent; }
+.tile.warn { background: var(--warn-bg); color: var(--warn-ink); border-color: transparent; }
+.tile.char { background: var(--surface); color: var(--ink); border-color: var(--line); }
+.tile.mix  { background: linear-gradient(135deg, var(--med-bg) 0 50%, var(--fin-bg) 50% 100%); color: var(--ink); border-color: transparent; }
+.tile:disabled { opacity: .26; filter: saturate(.35); cursor: default; }
+.tile .big { font-size: calc(64px * var(--scale)); line-height: 1.05; white-space: nowrap; }
+.tile .row { font-size: calc(40px * var(--scale)); white-space: nowrap; letter-spacing: .04em; }
+.tile .sub { font-family: var(--font-ui); font-size: calc(16px * var(--scale)); opacity: .82; white-space: nowrap; }
+.tile .lbl { font-size: calc(28px * var(--scale)); white-space: nowrap; }
+.tile .tm { font-weight: 400; color: var(--tone-ink); }
+.tile .m.off { opacity: .25; }
+.tile svg { width: calc(44px * var(--scale)); height: calc(44px * var(--scale)); }
+@supports (font-size: 1cqmin) {
+  .tile .big { font-size: min(calc(54cqmin * var(--scale)), calc(80cqw / var(--len, 1))); }
+  .tile .row { font-size: min(calc(40cqmin * var(--scale)), calc(86cqw / var(--len, 4))); }
+  .tile .lbl { font-size: min(calc(18cqmin * var(--scale)), calc(82cqw / var(--len, 3))); }
+  .tile .sub { font-size: calc(clamp(13px, 9cqmin, 22px) * var(--scale)); }
+  .tile svg { width: calc(26cqmin * var(--scale)); height: calc(26cqmin * var(--scale)); }
+}
+.fill { position: absolute; inset: 0; background: var(--focus-soft); transform-origin: 50% 100%; transform: scaleY(var(--p, 0)); pointer-events: none; }
+.tile > :not(.fill), .rbtn > :not(.fill) { position: relative; }
+.is-gaze { border-color: var(--focus) !important; box-shadow: 0 0 0 5px var(--focus-soft); }
+.tile.picked, .rbtn.picked { background: var(--focus); color: var(--on-focus); border-color: var(--focus); }
+.tile.picked .tm, .tile.picked .sub { color: inherit; }
+
+/* ---------- rail ---------- */
+.rail { grid-area: rail; display: grid; gap: var(--gap); grid-template-rows: repeat(3, minmax(0, 1fr)); min-height: 0; }
+.rbtn { font-size: calc(22px * var(--scale)); font-family: var(--font-board); }
+.rbtn svg { width: calc(40px * var(--scale)); height: calc(40px * var(--scale)); }
+.rbtn:disabled { opacity: .35; cursor: default; }
+@media (orientation: portrait) {
+  .rail { grid-template-rows: none; grid-template-columns: repeat(3, minmax(0, 1fr)); height: calc(clamp(84px, 11vh, 124px) * var(--scale)); }
+  .rbtn { flex-direction: row; gap: .5em; }
+}
+
+.cursor {
+  position: fixed; left: 0; top: 0; width: 30px; height: 30px; margin: -15px 0 0 -15px; z-index: 80;
+  border-radius: 50%; border: 3px solid var(--focus); background: var(--focus-soft); pointer-events: none;
+  transform: translate3d(var(--x, -100px), var(--y, -100px), 0);
+}
+
+/* ---------- start / settings sheets ---------- */
+.sheet {
+  position: fixed; inset: 0; z-index: 50; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  background: var(--bg); -webkit-user-select: text; user-select: text;
+  padding-block: calc(env(safe-area-inset-top, 0px) + 28px) calc(env(safe-area-inset-bottom, 0px) + 40px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.sheet-in { max-width: 720px; margin: 0 auto; display: grid; gap: 22px; }
+.brand { display: grid; gap: 8px; }
+.brand h1 { margin: 0; font-family: var(--font-board); font-weight: 400; font-size: clamp(40px, 7vw, 64px); line-height: 1.1; text-wrap: balance; }
+.brand h1 .bpmf { color: var(--focus); }
+.brand p { margin: 0; font-size: 19px; line-height: 1.6; color: var(--muted); max-width: 34em; }
+.demo { display: flex; gap: 10px; flex-wrap: wrap; }
+.demo span { font-family: var(--font-board); font-size: 30px; width: 58px; height: 58px; display: grid; place-items: center; border-radius: 14px; }
+.demo .i { background: var(--ini-bg); color: var(--ini-ink); }
+.demo .m { background: var(--med-bg); color: var(--med-ink); }
+.demo .f { background: var(--fin-bg); color: var(--fin-ink); }
+.demo .t { background: var(--tone-bg); color: var(--tone-ink); }
+.demo .eq { background: transparent; color: var(--muted); width: 28px; }
+.demo .c { background: var(--surface); border: 2px solid var(--line); }
+.actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.btn {
+  border: 0; border-radius: 16px; padding: 16px 28px; font-size: 20px; cursor: pointer;
+  background: var(--fn-bg); color: var(--fn-ink); font-family: var(--font-ui);
+}
+.btn.primary { background: var(--focus); color: var(--on-focus); font-size: 24px; padding: 18px 44px; font-family: var(--font-board); }
+.btn.small { padding: 10px 18px; font-size: 17px; }
+.chip { font-size: 16px; color: var(--muted); }
+.chip b { color: var(--ink); font-weight: 600; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px; display: grid; gap: 12px; }
+.card h2 { margin: 0; font-size: 19px; letter-spacing: .02em; }
+.card p, .card li { margin: 0; font-size: 16px; line-height: 1.65; color: var(--ink); }
+.card ol { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+.card .note { color: var(--muted); font-size: 15px; }
+.path { font-weight: 600; white-space: nowrap; }
+
+.field { display: grid; gap: 8px; }
+.field > .name { font-size: 15px; font-weight: 600; color: var(--muted); letter-spacing: .04em; }
+.choices { display: grid; gap: 8px; }
+.choices.inline { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+.choice { display: flex; gap: 12px; align-items: flex-start; border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; cursor: pointer; font-size: 17px; line-height: 1.45; }
+.choice:has(input:checked) { border-color: var(--focus); background: var(--focus-soft); }
+.choice input { margin-top: 4px; width: 20px; height: 20px; accent-color: var(--focus); flex: none; }
+.choice small { display: block; color: var(--muted); font-size: 14.5px; margin-top: 2px; }
+.toggle { display: flex; gap: 12px; align-items: center; font-size: 17px; cursor: pointer; }
+.toggle input { width: 22px; height: 22px; accent-color: var(--focus); flex: none; }
+.range { display: grid; grid-template-columns: minmax(0, 1fr) 5.5em; gap: 12px; align-items: center; }
+.range input { width: 100%; accent-color: var(--focus); }
+.range output { font-variant-numeric: tabular-nums; font-size: 18px; text-align: right; }
+textarea { width: 100%; box-sizing: border-box; min-height: 9.5em; border-radius: 12px; border: 2px solid var(--line); background: var(--bg); color: var(--ink); padding: 10px 12px; font: 18px/1.6 var(--font-board); resize: vertical; }
+.sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; position: sticky; top: calc(-28px - env(safe-area-inset-top, 0px)); background: var(--bg); padding-block: 6px; z-index: 1; }
+.sheet-head h1 { margin: 0; font-size: 28px; font-family: var(--font-board); font-weight: 400; }
+
+/* ---------- calibration (built by gaze.js) ---------- */
+.calib { position: fixed; inset: 0; z-index: 60; background: var(--bg); }
+.calib-card {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100% - 32px));
+  background: var(--surface); border-radius: 22px; border: 1px solid var(--line); padding: 22px; box-sizing: border-box;
+  display: grid; gap: 14px; justify-items: center; text-align: center;
+}
+.calib-card h2 { margin: 0; font-family: var(--font-board); font-weight: 400; font-size: 30px; }
+.calib-card p { margin: 0; font-size: 18px; line-height: 1.6; color: var(--muted); }
+.calib-card canvas { width: 240px; height: 180px; border-radius: 14px; background: #0B1214; }
+.calib-card .actions { justify-content: center; }
+.quality { font-size: 20px; padding: 6px 16px; border-radius: 999px; }
+.quality.good { background: var(--med-bg); color: var(--med-ink); }
+.quality.ok { background: var(--fin-bg); color: var(--fin-ink); }
+.quality.bad { background: var(--warn-bg); color: var(--warn-ink); }
+.calib-dot { position: absolute; width: 120px; height: 120px; margin: -60px 0 0 -60px; transition: left .7s ease-in-out, top .7s ease-in-out; pointer-events: none; }
+.calib-dot i { position: absolute; inset: 0; border-radius: 50%; border: 6px solid var(--focus); transform: scale(1); }
+.calib-dot b { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: #E9A93B; box-shadow: 0 0 0 6px rgba(233, 169, 59, .28); }
+.calib-dot.shrink i { transform: scale(.22); transition: transform var(--t, 1.1s) linear; }
+
+/* ---------- calm mode & reduced motion ---------- */
+.calm .tile.ini  { background: color-mix(in srgb, var(--ini-bg) 40%, var(--surface)); }
+.calm .tile.med  { background: color-mix(in srgb, var(--med-bg) 40%, var(--surface)); }
+.calm .tile.fin  { background: color-mix(in srgb, var(--fin-bg) 40%, var(--surface)); }
+.calm .tile.tone { background: color-mix(in srgb, var(--tone-bg) 40%, var(--surface)); }
+.calm .tile.mix  { background: var(--surface); }
+.calm *, .calm *::before { transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before { transition: none !important; }
+  .calib-dot { transition: left .25s linear, top .25s linear !important; }
+  .calib-dot.shrink i { transition: transform var(--t, 1.1s) linear !important; }
+}
+</style>
+
+<div class="app" id="app">
+  <header class="top">
+    <div class="out" id="out" aria-live="polite" aria-label="打出來的字"></div>
+    <div class="comp" id="comp" aria-label="正在拼的音">
+      <div class="slot ini"><b></b><span>聲母</span></div>
+      <div class="slot med"><b></b><span>介音</span></div>
+      <div class="slot fin"><b></b><span>韻母</span></div>
+      <div class="slot tone"><b></b><span>聲調</span></div>
+      <div class="side">
+        <button class="gear" id="gear" type="button" aria-label="家長設定（按住一秒）">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </button>
+        <span class="camdot" id="camdot" hidden></span>
+      </div>
+    </div>
+    <div class="banner" id="banner" hidden></div>
+  </header>
+
+  <main class="board" id="board" aria-label="注音鍵盤"></main>
+
+  <nav class="rail" id="rail" aria-label="功能鍵">
+    <button class="rbtn" type="button" data-target data-rail="back" data-repeat aria-label="退回一步">
+      <span class="fill" aria-hidden="true"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+      <span>退回</span>
+    </button>
+    <button class="rbtn" type="button" data-target data-rail="speak" aria-label="把字唸出來">
+      <span class="fill" aria-hidden="true"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+      <span>唸出來</span>
+    </button>
+    <button class="rbtn" type="button" data-target data-rail="menu" aria-label="更多：標點、常用句、休息">
+      <span class="fill" aria-hidden="true"></span>
+      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+      <span>更多</span>
+    </button>
+  </nav>
+</div>
+
+<div class="cursor" id="cursor" hidden></div>
+
+<section class="sheet" id="start" aria-label="開始">
+  <div class="sheet-in">
+    <div class="brand">
+      <h1>眼睛<span class="bpmf">注音</span>板</h1>
+      <p>看著格子停一下，就能選注音、拼字、讓 iPad 唸出來。照「聲母 → 介音 → 韻母 → 聲調」一步一步拼，每一步最多 8 個大格子。</p>
+    </div>
+    <div class="demo" aria-hidden="true">
+      <span class="i">ㄇ</span><span class="f">ㄚ</span><span class="t">ˇ</span><span class="eq">→</span><span class="c">馬</span>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="startBtn" type="button">開始</button>
+      <button class="btn" id="startSettings" type="button">家長設定</button>
+      <span class="chip">輸入方式：<b id="modeName"></b></span>
+    </div>
+    <div class="card">
+      <h2>第一次使用：打開 iPad 內建的眼動追蹤</h2>
+      <ol>
+        <li>打開 <span class="path">設定 › 輔助使用 › 眼動追蹤</span>，開啟後跟著畫面上的圓點做校正。</li>
+        <li>確認同一頁的「停留控制」是開啟的：眼睛停在一個格子上，iPad 就會幫你點一下。</li>
+        <li>iPad 放在穩定的桌面或支架上，距離臉大約 30–45 公分，臉在畫面中間。</li>
+      </ol>
+      <p class="note">這個網頁只需要收到「點一下」，所以 iPad 內建眼動追蹤、觸控、外接開關都能用。在家長設定可以改成「游標停留」或「本程式相機眼控」。</p>
+    </div>
+    <div class="card">
+      <h2>給孩子的小提醒</h2>
+      <ol>
+        <li>先用手指點幾次，熟悉格子在哪裡，再換成眼睛。</li>
+        <li>上面打字的地方可以放心看，不會選到東西。</li>
+        <li>累了就按「更多 › 休息」，一次練 5–10 分鐘就很好。</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section class="sheet" id="settings" aria-label="家長設定" hidden>
+  <div class="sheet-in">
+    <div class="sheet-head">
+      <h1>家長設定</h1>
+      <button class="btn primary" id="settingsDone" type="button">回到鍵盤</button>
+    </div>
+
+    <div class="card">
+      <h2>輸入方式</h2>
+      <div class="choices">
+        <label class="choice"><input type="radio" name="input" value="tap" data-set="input" id="in-tap"><span>觸控／iPad 內建眼動追蹤<small>由 iPad 的「停留控制」幫忙點按。最穩定，推薦先用這個。</small></span></label>
+        <label class="choice"><input type="radio" name="input" value="hover" data-set="input" id="in-hover"><span>游標停留<small>滑鼠、頭控滑鼠或會移動游標的裝置：游標停在格子上，就會選取。</small></span></label>
+        <label class="choice"><input type="radio" name="input" value="camera" data-set="input" id="in-camera"><span>本程式相機眼控<small>用前鏡頭追蹤眼睛或頭部，要先校正。只能在自己架設的 https 網址使用，Claude 預覽頁面不能開相機。</small></span></label>
+      </div>
+      <div class="field">
+        <span class="name">停留多久才選取（游標停留、相機眼控）</span>
+        <div class="range"><input type="range" min="0.6" max="3" step="0.1" data-set="dwell" id="set-dwell"><output id="out-dwell"></output></div>
+      </div>
+    </div>
+
+    <div class="card" id="camCard">
+      <h2>相機眼控</h2>
+      <div class="field">
+        <span class="name">追蹤方式</span>
+        <div class="choices inline">
+          <label class="choice"><input type="radio" name="camMode" value="eyes" data-set="camMode" id="cm-eyes"><span>看眼睛</span></label>
+          <label class="choice"><input type="radio" name="camMode" value="head" data-set="camMode" id="cm-head"><span>看頭部轉向</span></label>
+        </div>
+      </div>
+      <div class="field">
+        <span class="name">游標穩定度</span>
+        <div class="choices inline">
+          <label class="choice"><input type="radio" name="smooth" value="0" data-set="smooth" id="sm-0"><span>靈敏</span></label>
+          <label class="choice"><input type="radio" name="smooth" value="1" data-set="smooth" id="sm-1"><span>標準</span></label>
+          <label class="choice"><input type="radio" name="smooth" value="2" data-set="smooth" id="sm-2"><span>穩定</span></label>
+        </div>
+      </div>
+      <div class="field">
+        <span class="name">校正點數</span>
+        <div class="choices inline">
+          <label class="choice"><input type="radio" name="calibPoints" value="5" data-set="calibPoints" id="cp-5"><span>5 點（較快）</span></label>
+          <label class="choice"><input type="radio" name="calibPoints" value="9" data-set="calibPoints" id="cp-9"><span>9 點（較準）</span></label>
+        </div>
+      </div>
+      <label class="toggle"><input type="checkbox" data-set="cursor" id="set-cursor">顯示眼睛看的位置（圓圈）<small class="note">&nbsp;不建議：有偏差時孩子容易追著圓圈跑</small></label>
+      <div class="actions"><button class="btn" id="recalib" type="button">重新校正</button><span class="chip" id="camState"></span></div>
+    </div>
+
+    <div class="card">
+      <h2>打字</h2>
+      <div class="field">
+        <span class="name">打出來的是</span>
+        <div class="choices inline">
+          <label class="choice"><input type="radio" name="output" value="hanzi" data-set="output" id="op-hanzi"><span>國字（拼完選字）</span></label>
+          <label class="choice"><input type="radio" name="output" value="zhuyin" data-set="output" id="op-zhuyin"><span>只打注音</span></label>
+        </div>
+      </div>
+      <label class="toggle"><input type="checkbox" data-set="assist" id="set-assist">拼音輔助：拼不出來的符號會變淡、不能選</label>
+      <label class="toggle"><input type="checkbox" data-set="predict" id="set-predict">選字後，提示下一個可能的字</label>
+      <label class="toggle"><input type="checkbox" data-set="ruby" id="set-ruby">國字上面顯示注音</label>
+    </div>
+
+    <div class="card">
+      <h2>聲音</h2>
+      <label class="toggle"><input type="checkbox" data-set="speakKeys" id="set-speakKeys">選到注音符號和聲調時唸出來</label>
+      <label class="toggle"><input type="checkbox" data-set="speakChars" id="set-speakChars">選到國字時唸出來</label>
+      <label class="toggle"><input type="checkbox" data-set="sound" id="set-sound">選取時的輕提示音</label>
+      <div class="field">
+        <span class="name">說話速度</span>
+        <div class="range"><input type="range" min="0.5" max="1.3" step="0.05" data-set="rate" id="set-rate"><output id="out-rate"></output></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>畫面</h2>
+      <div class="field">
+        <span class="name">字的大小</span>
+        <div class="choices inline">
+          <label class="choice"><input type="radio" name="size" value="0.88" data-set="size" id="sz-s"><span>小</span></label>
+          <label class="choice"><input type="radio" name="size" value="1" data-set="size" id="sz-m"><span>中</span></label>
+          <label class="choice"><input type="radio" name="size" value="1.12" data-set="size" id="sz-l"><span>大</span></label>
+        </div>
+      </div>
+      <label class="toggle"><input type="checkbox" data-set="calm" id="set-calm">低刺激：顏色變淡、沒有動畫</label>
+    </div>
+
+    <div class="card">
+      <h2>常用句</h2>
+      <p class="note">一行一句，最多 8 句。在鍵盤按「更多 › 常用句」就會出現，選到會直接唸出來。</p>
+      <textarea data-set="phrases" id="set-phrases" rows="8" spellcheck="false"></textarea>
+    </div>
+
+    <div class="card">
+      <h2>離線使用</h2>
+      <p id="offlineState">檢查中…</p>
+      <p class="note">要離線使用：把程式放到自己的 https 網址，用 Safari 打開後選「分享 › 加入主畫面」，連著網路打開一次，等這裡顯示「已可以離線使用」。之後從主畫面圖示打開，沒有網路也能用。</p>
+    </div>
+
+    <div class="card">
+      <h2>打字紀錄</h2>
+      <p class="note">打出來的字只存在這台 iPad 的瀏覽器裡，不會上傳。</p>
+      <div class="actions"><button class="btn" id="copyText" type="button">複製打出來的字</button><button class="btn" id="wipeText" type="button">清除打出來的字</button><span class="chip" id="textNote"></span></div>
+    </div>
+  </div>
+</section>
+
+<script src="data/zhuyin-dict.js"></script>
+<script src="gaze.js"></script>
+<script src="app.js"></script>
